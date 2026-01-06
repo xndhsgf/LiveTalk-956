@@ -1,21 +1,14 @@
 
 import React, { useState } from 'react';
-import { Eraser, AlertTriangle, ShieldAlert, RotateCcw, UserMinus, RefreshCw, Trash2, History, DatabaseBackup, Globe, Smartphone, Trophy } from 'lucide-react';
+import { Eraser, AlertTriangle, ShieldAlert, RotateCcw, UserMinus, RefreshCw, Trash2, History, DatabaseBackup, Globe, Smartphone } from 'lucide-react';
 import { db } from '../../services/firebase';
-import { collection, getDocs, writeBatch, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc, deleteDoc } from 'firebase/firestore';
 import { DEFAULT_GIFTS, DEFAULT_STORE_ITEMS, DEFAULT_VIP_LEVELS } from '../../constants';
 
-interface AdminMaintenanceProps {
-  currentUser: any;
-}
-
-const ROOT_ADMIN_EMAIL = 'admin-owner@livetalk.com';
-
-const AdminMaintenance: React.FC<AdminMaintenanceProps> = ({ currentUser }) => {
+const AdminMaintenance: React.FC<any> = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processStatus, setProcessStatus] = useState('');
 
-  // استعادة البيانات الافتراضية
   const handleRestoreSystemData = async () => {
     if (!confirm('هل تريد استعادة البيانات الافتراضية؟')) return;
     setIsProcessing(true);
@@ -42,43 +35,6 @@ const AdminMaintenance: React.FC<AdminMaintenanceProps> = ({ currentUser }) => {
     }
   };
 
-  // تصفير كاريزما التطبيق والغرف بالكامل
-  const handleResetAllAppCharm = async () => {
-    if (!confirm('🔥 تحذير: هذا الإجراء سيقوم بحذف وتصفير جميع أرقام الكاريزما (الكأس) لكل المستخدمين في التطبيق وفي كل الغرف النشطة حالياً. هل أنت متأكد؟')) return;
-    
-    setIsProcessing(true);
-    setProcessStatus('جاري تصفير كاريزما التطبيق...');
-    try {
-      const batch = writeBatch(db);
-      
-      // 1. تصفير كاريزما جميع المستخدمين (الملفات الشخصية)
-      const usersSnap = await getDocs(collection(db, 'users'));
-      usersSnap.forEach(userDoc => {
-        batch.update(userDoc.ref, { charm: 0 });
-      });
-
-      // 2. تصفير الكاريزما داخل جميع الغرف النشطة (المتحدثين)
-      const roomsSnap = await getDocs(collection(db, 'rooms'));
-      roomsSnap.forEach(roomDoc => {
-        const roomData = roomDoc.data();
-        if (roomData.speakers && Array.isArray(roomData.speakers)) {
-          const resetSpeakers = roomData.speakers.map((s: any) => ({ ...s, charm: 0 }));
-          batch.update(roomDoc.ref, { speakers: resetSpeakers });
-        }
-      });
-
-      await batch.commit();
-      alert('✅ تمت عملية التصفير الشاملة بنجاح!');
-    } catch (e) {
-      console.error(e);
-      alert('❌ فشلت عملية التصفير');
-    } finally {
-      setIsProcessing(false);
-      setProcessStatus('');
-    }
-  };
-
-  // فك حظر جميع الأجهزة والشبكات
   const handleClearBlacklist = async () => {
     if (!confirm('🔥 هل أنت متأكد؟ هذا الإجراء سيفك الحظر عن جميع الأجهزة والشبكات المحظورة فوراً.')) return;
     setIsProcessing(true);
@@ -99,18 +55,6 @@ const AdminMaintenance: React.FC<AdminMaintenanceProps> = ({ currentUser }) => {
       setIsProcessing(false);
       setProcessStatus('');
     }
-  };
-
-  const handleClearChat = async () => {
-    if (!confirm('حذف الأرشيف الخاص؟')) return;
-    setIsProcessing(true);
-    try {
-      const snap = await getDocs(collection(db, 'private_chats'));
-      const batch = writeBatch(db);
-      snap.forEach(d => batch.delete(d.ref));
-      await batch.commit();
-      alert('تم تنظيف المحادثات بنجاح');
-    } catch (e) { alert('فشل التنظيف'); } finally { setIsProcessing(false); }
   };
 
   return (
@@ -136,13 +80,9 @@ const AdminMaintenance: React.FC<AdminMaintenanceProps> = ({ currentUser }) => {
           <button onClick={handleClearBlacklist} disabled={isProcessing} className="px-8 py-5 bg-emerald-700 hover:bg-emerald-800 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
             <Globe size={22} /> فك حظر الشبكة والأجهزة عن الجميع
           </button>
-
-          <button onClick={handleResetAllAppCharm} disabled={isProcessing} className="px-8 py-5 bg-orange-700 hover:bg-orange-800 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
-            <Trophy size={22} /> تصفير كاريزما التطبيق بالكامل
-          </button>
           
-          <button onClick={handleClearChat} disabled={isProcessing} className="px-8 py-5 bg-slate-800 text-white font-black rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
-            <History size={22} /> مسح الأرشيف الخاص
+          <button disabled className="px-8 py-5 bg-slate-800 text-white font-black rounded-2xl opacity-50 cursor-not-allowed flex items-center justify-center gap-3">
+            <History size={22} /> مسح الأرشيف العام (قريباً)
           </button>
         </div>
         
