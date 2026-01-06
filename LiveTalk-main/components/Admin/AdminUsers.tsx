@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import { Search, Settings2, X, Save, ShieldAlert, Trash2, Lock, Unlock, Key, ShieldCheck, Check, UserCog, Hash, Smartphone, Globe, Coins } from 'lucide-react';
+import { Search, Settings2, X, Save, ShieldAlert, Trash2, Lock, Unlock, Key, ShieldCheck, Check, UserCog, Hash, Smartphone, Globe, Coins, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, VIPPackage } from '../../types';
 import { db } from '../../services/firebase';
-import { doc, updateDoc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
 
 interface AdminUsersProps {
   users: User[];
@@ -18,6 +18,7 @@ const ROOT_ADMIN_EMAIL = 'admin-owner@livetalk.com';
 const AdminUsers: React.FC<AdminUsersProps> = ({ users, vipLevels, onUpdateUser, currentUser }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingFields, setEditingFields] = useState({ 
     coins: 0, 
     customId: '', 
@@ -39,6 +40,34 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ users, vipLevels, onUpdateUser,
     u.customId?.toString().includes(searchQuery) ||
     u.id.includes(searchQuery)
   );
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    if (!confirm(`⚠️ تحذير نهائي: هل أنت متأكد من حذف حساب "${selectedUser.name}" بشكل كامل؟ لا يمكن التراجع عن هذا الإجراء وسيتم مسح كافة البيانات والارتباطات.`)) return;
+    
+    setIsDeleting(true);
+    try {
+      const batch = writeBatch(db);
+      
+      // 1. حذف وثيقة المستخدم
+      batch.delete(doc(db, 'users', selectedUser.id));
+      
+      // 2. حذف غرفة المستخدم إن وجدت
+      batch.delete(doc(db, 'rooms', selectedUser.id));
+      
+      // 3. مسح بيانات البند إن وجدت
+      if (selectedUser.deviceId) batch.delete(doc(db, 'blacklist', 'dev_' + selectedUser.deviceId));
+      if (selectedUser.lastIp) batch.delete(doc(db, 'blacklist', 'ip_' + selectedUser.lastIp.replace(/\./g, '_')));
+
+      await batch.commit();
+      alert('تم حذف الحساب وكافة بياناته بنجاح ✅');
+      setSelectedUser(null);
+    } catch (e) {
+      alert('فشل حذف الحساب، حاول مجدداً');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!selectedUser) return;
@@ -254,7 +283,17 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ users, vipLevels, onUpdateUser,
                      </div>
                   </div>
 
-                  <button onClick={handleSave} className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all text-sm uppercase tracking-wider">حفظ كافة التعديلات</button>
+                  <div className="flex flex-col gap-3 pt-6">
+                    <button onClick={handleSave} className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all text-sm uppercase tracking-wider">حفظ كافة التعديلات</button>
+                    
+                    <button 
+                      onClick={handleDeleteUser} 
+                      disabled={isDeleting}
+                      className="w-full py-4 bg-red-600/10 text-red-500 border border-red-500/20 font-black rounded-2xl flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all text-xs"
+                    >
+                      {isDeleting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><Trash2 size={16}/> حذف الحساب نهائياً</>}
+                    </button>
+                  </div>
                </div>
             </motion.div>
           </div>
