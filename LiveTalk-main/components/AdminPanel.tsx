@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, ShieldCheck, Activity, Gift as GiftIcon, ShoppingBag, 
-  Crown, Smartphone, Eraser, X, Medal, IdCard, Layout, Zap, Smile, Heart, Building, Image as ImageIcon, UserCircle, Home
+  Crown, Smartphone, Eraser, X, Medal, IdCard, Layout, Zap, Smile, Heart, Building, Image as ImageIcon, UserCircle, Home, Menu
 } from 'lucide-react';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -75,6 +75,7 @@ const compressImage = (base64: string, maxWidth: number, maxHeight: number, qual
 };
 
 const AdminPanel: React.FC<AdminPanelProps> = (props) => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const currentEmail = (props.currentUser as any).email?.toLowerCase() || '';
   const isIdOne = props.currentUser.customId?.toString() === '1';
   const isRootAdmin = currentEmail === ROOT_ADMIN_EMAIL.toLowerCase() || isIdOne;
@@ -100,10 +101,9 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     { id: 'maintenance', label: 'الصيانة', icon: Eraser, color: 'text-red-500' },
   ];
 
-  // فلترة القائمة بناءً على الصلاحيات
   const allowedMenuItems = menuItems.filter(item => {
-    if (isRootAdmin) return true; // المالك يرى كل شيء
-    if (isModerator && props.currentUser.moderatorPermissions?.includes(item.id)) return true; // المشرف يرى ما خُصص له
+    if (isRootAdmin) return true;
+    if (isModerator && props.currentUser.moderatorPermissions?.includes(item.id)) return true;
     return false;
   });
 
@@ -115,26 +115,16 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 1024 * 1024) {
-        alert('حجم الملف الأصلي كبير جداً (أكثر من 1 ميجابايت). يرجى ضغطه أولاً قبل الرفع.');
+        alert('حجم الملف كبير جداً');
         return;
       }
-
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const result = ev.target?.result as string;
-        
         if (file.type === 'image/gif' || file.type.startsWith('video/')) {
-          if (result.length > 900000) {
-             alert('ملف الـ GIF كبير جداً بعد التحويل. يرجى اختيار ملف أصغر لضمان الحفظ.');
-             return;
-          }
           callback(result);
         } else {
           const compressed = await compressImage(result, w, h, 0.2);
-          if (compressed.length > 950000) {
-             alert('حتى بعد الضغط، الصورة لا تزال كبيرة جداً. يرجى تقليل أبعادها يدوياً.');
-             return;
-          }
           callback(compressed);
         }
       };
@@ -142,48 +132,86 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     }
   };
 
-  const handleUpdateGameSettings = async (updates: Partial<GameSettings>) => {
-    const newSettings = { ...props.gameSettings, ...updates };
-    await props.setGameSettings(newSettings);
-  };
-
   return (
     <div className="fixed inset-0 z-[2000] bg-[#020617] flex flex-col md:flex-row font-cairo overflow-hidden text-right" dir="rtl">
-      <div className="w-full md:w-64 bg-slate-950 border-l border-white/5 flex flex-col shrink-0 shadow-2xl z-10">
-        <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <span className="font-black text-white">{isRootAdmin ? 'المدير العام' : 'لوحة المشرف'}</span>
-          </div>
+      {/* Top Mobile Bar */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-slate-950 border-b border-white/5 z-[2100]">
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-white bg-white/5 rounded-xl">
+          <Menu size={24} />
+        </button>
+        <span className="font-black text-white text-sm">{allowedMenuItems.find(i => i.id === activeTab)?.label || 'السيستم'}</span>
+        <button onClick={props.onClose} className="p-2 text-red-500 bg-red-500/10 rounded-xl">
+          <X size={24} />
+        </button>
+      </div>
+
+      {/* Sidebar - المتجاوب */}
+      <motion.div 
+        className={`fixed md:relative inset-y-0 right-0 w-72 md:w-64 bg-slate-950 border-l border-white/5 flex flex-col shrink-0 shadow-2xl z-[2200] transition-transform duration-300 md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="p-6 border-b border-white/5 hidden md:flex items-center justify-between">
+          <span className="font-black text-white">{isRootAdmin ? 'المدير العام' : 'لوحة المشرف'}</span>
           <button onClick={props.onClose} className="text-slate-400 p-2"><X size={24}/></button>
         </div>
-        <nav className="flex md:flex-col p-3 gap-1 overflow-x-auto md:overflow-y-auto custom-scrollbar scrollbar-hide">
+        
+        {/* Mobile Header in Sidebar */}
+        <div className="p-6 border-b border-white/5 md:hidden flex justify-between items-center">
+           <span className="font-black text-white text-lg">قائمة الأقسام</span>
+           <button onClick={() => setIsSidebarOpen(false)} className="text-white bg-white/10 p-1 rounded-lg"><X size={20}/></button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar scrollbar-hide">
           {allowedMenuItems.map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === item.id ? 'bg-white/10 text-white' : 'text-slate-500 hover:bg-white/5'}`}>
-              <item.icon size={18} className={activeTab === item.id ? item.color : ''} />
+            <button 
+              key={item.id} 
+              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }} 
+              className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl transition-all ${activeTab === item.id ? 'bg-white/10 text-white shadow-lg' : 'text-slate-500 hover:bg-white/5'}`}
+            >
+              <item.icon size={20} className={activeTab === item.id ? item.color : ''} />
               <span className="text-xs font-black">{item.label}</span>
             </button>
           ))}
         </nav>
-      </div>
+        
+        <div className="p-4 md:hidden">
+           <button onClick={props.onClose} className="w-full py-4 bg-red-600/10 text-red-500 rounded-2xl font-black text-xs">إغلاق اللوحة</button>
+        </div>
+      </motion.div>
 
-      <div className="flex-1 bg-slate-900/40 overflow-y-auto p-6 md:p-10 custom-scrollbar transition-all duration-100">
-        {activeTab === 'users' && <AdminUsers users={props.users} vipLevels={props.vipLevels} onUpdateUser={props.onUpdateUser} currentUser={props.currentUser} />}
-        {activeTab === 'rooms_manage' && <AdminRooms rooms={props.rooms} />}
-        {activeTab === 'defaults' && <AdminDefaults handleFileUpload={handleFileUpload} />}
-        {activeTab === 'badges' && <AdminBadges users={props.users} onUpdateUser={props.onUpdateUser} />}
-        {activeTab === 'id_badges' && <AdminIdBadges users={props.users} onUpdateUser={props.onUpdateUser} />}
-        {activeTab === 'host_agency' && <AdminHostAgencies users={props.users} onUpdateUser={props.onUpdateUser} />}
-        {activeTab === 'room_bgs' && <AdminBackgrounds handleFileUpload={handleFileUpload} />}
-        {activeTab === 'mic_skins' && <AdminMicSkins handleFileUpload={handleFileUpload} />}
-        {activeTab === 'agency' && <AdminAgency users={props.users} onUpdateUser={props.onUpdateUser} />}
-        {activeTab === 'emojis' && <AdminEmojis gameSettings={props.gameSettings} onUpdateGameSettings={handleUpdateGameSettings} handleFileUpload={handleFileUpload} />}
-        {activeTab === 'relationships' && <AdminRelationships gameSettings={props.gameSettings} onUpdateGameSettings={handleUpdateGameSettings} handleFileUpload={handleFileUpload} />}
-        {activeTab === 'games' && <AdminGames gameSettings={props.gameSettings} onUpdateGameSettings={handleUpdateGameSettings} handleFileUpload={handleFileUpload} />}
-        {activeTab === 'gifts' && <AdminGifts gifts={props.gifts} onSaveGift={async (g, d) => { const ref = doc(db, 'gifts', g.id); d ? await deleteDoc(ref) : await setDoc(ref, g); }} handleFileUpload={handleFileUpload} />}
-        {activeTab === 'store' && <AdminStore storeItems={props.storeItems} onSaveItem={async (i, d) => { const ref = doc(db, 'store', i.id); d ? await deleteDoc(ref) : await setDoc(ref, i); }} handleFileUpload={handleFileUpload} />}
-        {activeTab === 'vip' && <AdminVIP vipLevels={props.vipLevels} onSaveVip={async (v, d) => { const id = `vip_lvl_${v.level}`; const ref = doc(db, 'vip', id); d ? await deleteDoc(ref) : await setDoc(ref, { ...v, id }); }} handleFileUpload={handleFileUpload} />}
-        {activeTab === 'identity' && <AdminIdentity appLogo={props.appLogo} appBanner={props.appBanner} appName={props.appName} authBackground={props.authBackground} onUpdateAppLogo={props.onUpdateAppLogo} onUpdateAppBanner={props.onUpdateAppBanner} onUpdateAppName={props.onUpdateAppName} onUpdateAuthBackground={props.onUpdateAuthBackground} handleFileUpload={handleFileUpload} />}
-        {activeTab === 'maintenance' && <AdminMaintenance currentUser={props.currentUser} />}
+      {/* Overlay for Mobile Sidebar */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2150] md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Content Area */}
+      <div className="flex-1 bg-slate-900/40 overflow-y-auto p-4 md:p-10 custom-scrollbar scrollbar-hide transition-all duration-100">
+        <div className="max-w-full overflow-x-hidden">
+          {activeTab === 'users' && <AdminUsers users={props.users} vipLevels={props.vipLevels} onUpdateUser={props.onUpdateUser} currentUser={props.currentUser} />}
+          {activeTab === 'rooms_manage' && <AdminRooms rooms={props.rooms} />}
+          {activeTab === 'defaults' && <AdminDefaults handleFileUpload={handleFileUpload} />}
+          {activeTab === 'badges' && <AdminBadges users={props.users} onUpdateUser={props.onUpdateUser} />}
+          {activeTab === 'id_badges' && <AdminIdBadges users={props.users} onUpdateUser={props.onUpdateUser} />}
+          {activeTab === 'host_agency' && <AdminHostAgencies users={props.users} onUpdateUser={props.onUpdateUser} />}
+          {activeTab === 'room_bgs' && <AdminBackgrounds handleFileUpload={handleFileUpload} />}
+          {activeTab === 'mic_skins' && <AdminMicSkins handleFileUpload={handleFileUpload} />}
+          {activeTab === 'agency' && <AdminAgency users={props.users} onUpdateUser={props.onUpdateUser} />}
+          {activeTab === 'emojis' && <AdminEmojis gameSettings={props.gameSettings} onUpdateGameSettings={(s) => props.setGameSettings({...props.gameSettings, ...s})} handleFileUpload={handleFileUpload} />}
+          {activeTab === 'relationships' && <AdminRelationships gameSettings={props.gameSettings} onUpdateGameSettings={(s) => props.setGameSettings({...props.gameSettings, ...s})} handleFileUpload={handleFileUpload} />}
+          {activeTab === 'games' && <AdminGames gameSettings={props.gameSettings} onUpdateGameSettings={(s) => props.setGameSettings({...props.gameSettings, ...s})} handleFileUpload={handleFileUpload} />}
+          {activeTab === 'gifts' && <AdminGifts gifts={props.gifts} onSaveGift={async (g, d) => { const ref = doc(db, 'gifts', g.id); d ? await deleteDoc(ref) : await setDoc(ref, g); }} handleFileUpload={handleFileUpload} />}
+          {activeTab === 'store' && <AdminStore storeItems={props.storeItems} onSaveItem={async (i, d) => { const ref = doc(db, 'store', i.id); d ? await deleteDoc(ref) : await setDoc(ref, i); }} handleFileUpload={handleFileUpload} />}
+          {activeTab === 'vip' && <AdminVIP vipLevels={props.vipLevels} onSaveVip={async (v, d) => { const id = `vip_lvl_${v.level}`; const ref = doc(db, 'vip', id); d ? await deleteDoc(ref) : await setDoc(ref, { ...v, id }); }} handleFileUpload={handleFileUpload} />}
+          {activeTab === 'identity' && <AdminIdentity appLogo={props.appLogo} appBanner={props.appBanner} appName={props.appName} authBackground={props.authBackground} onUpdateAppLogo={props.onUpdateAppLogo} onUpdateAppBanner={props.onUpdateAppBanner} onUpdateAppName={props.onUpdateAppName} onUpdateAuthBackground={props.onUpdateAuthBackground} handleFileUpload={handleFileUpload} />}
+          {activeTab === 'maintenance' && <AdminMaintenance currentUser={props.currentUser} />}
+        </div>
       </div>
     </div>
   );
