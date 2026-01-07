@@ -113,6 +113,23 @@ const VoiceRoom: React.FC<any> = ({
   const isModerator = room.moderators?.includes(currentUser.id);
   const canAdmin = isHost || isModerator;
 
+  // إرسال دخولية المستخدم فور انضمامه للغرفة مع مراعاة المدة
+  useEffect(() => {
+    if (!initialRoom.id || !currentUser.id || hasSentEntryRef.current) return;
+    
+    if (currentUser.activeEntry) {
+      addDoc(collection(db, 'rooms', initialRoom.id, 'entry_events'), {
+        userId: currentUser.id,
+        userName: currentUser.name,
+        videoUrl: currentUser.activeEntry,
+        duration: currentUser.activeEntryDuration || 6, // إرسال المدة
+        timestamp: serverTimestamp()
+      }).catch(e => console.error("Entry Trigger Failed", e));
+      
+      hasSentEntryRef.current = true;
+    }
+  }, [initialRoom.id, currentUser.id, currentUser.activeEntry, currentUser.activeEntryDuration]);
+
   // جلب أشكال المايكات المخصصة من السيستم
   useEffect(() => {
     const unsubSkins = onSnapshot(doc(db, 'appSettings', 'micSkins'), (snap) => {
@@ -229,6 +246,14 @@ const VoiceRoom: React.FC<any> = ({
     }, 2500); 
   }, [initialRoom.id, localMicCount]);
 
+  // إدارة مؤقت اختفاء زر الكومبو
+  const startComboExpiryTimer = useCallback(() => {
+    if (comboExpireTimerRef.current) clearTimeout(comboExpireTimerRef.current);
+    comboExpireTimerRef.current = setTimeout(() => {
+      setComboState(null);
+    }, 5000); // 5 ثواني كما هو مطلوب
+  }, []);
+
   // تنفيذ الأوامر الإدارية من البروفايل
   const handleAdminActionFromProfile = async (action: string, targetUser: User) => {
     if (!canAdmin) return;
@@ -297,6 +322,7 @@ const VoiceRoom: React.FC<any> = ({
     setShowGifts(false);
     if (executeGiftSendOptimistic(gift, quantity, selectedRecipientIds, false)) {
       setComboState({ gift, recipients: [...selectedRecipientIds], count: quantity });
+      startComboExpiryTimer(); // بدء مؤقت الاختفاء
     }
   };
 
@@ -504,7 +530,20 @@ const VoiceRoom: React.FC<any> = ({
            </div>
         </div>
         
-        <AnimatePresence>{comboState && <ComboButton gift={comboState.gift} count={comboState.count} onHit={() => { setComboState(p => p ? { ...p, count: p.count + 1 } : null); executeGiftSendOptimistic(comboState.gift, 1, comboState.recipients, true); }} duration={5000} />}</AnimatePresence>
+        <AnimatePresence>
+          {comboState && (
+            <ComboButton 
+              gift={comboState.gift} 
+              count={comboState.count} 
+              onHit={() => { 
+                setComboState(p => p ? { ...p, count: p.count + 1 } : null); 
+                executeGiftSendOptimistic(comboState.gift, 1, comboState.recipients, true); 
+                startComboExpiryTimer(); // إعادة تعيين المؤقت عند الضغط
+              }} 
+              duration={5000} 
+            />
+          )}
+        </AnimatePresence>
         <ControlBar isMuted={isMuted} onToggleMute={onToggleMute} onShowGifts={() => setShowGifts(true)} onShowGames={() => setShowGameCenter(true)} onShowRoomTools={() => setShowTools(true)} onSendMessage={handleSendMessage} onShowEmojis={() => setShowEmojis(true)} userCoins={Number(currentUser.coins)} />
       </div>
 

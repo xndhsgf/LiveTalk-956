@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingBag, Check, MessageSquare, Image as ImageIcon, Coins, Sparkles, Wand2, Trash2, LogIn, Video } from 'lucide-react';

@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Plus, ShoppingBag, Edit3, Trash2, X, Upload, Image as ImageIcon, Video, Wand2 } from 'lucide-react';
+import { Plus, ShoppingBag, Edit3, Trash2, X, Upload, Image as ImageIcon, Video, Wand2, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StoreItem } from '../../types';
 
@@ -35,7 +36,7 @@ const AdminStore: React.FC<AdminStoreProps> = ({ storeItems, onSaveItem, handleF
           <p className="text-slate-500 text-xs font-bold mt-1">إضافة وتعديل الإطارات، الفقاعات، والدخوليات الملكية.</p>
         </div>
         <button 
-          onClick={() => setEditingStoreItem({ id: 'item_' + Date.now(), name: '', type: 'frame', price: 500, url: '', thumbnailUrl: '' })} 
+          onClick={() => setEditingStoreItem({ id: 'item_' + Date.now(), name: '', type: 'frame', price: 500, url: '', thumbnailUrl: '', duration: 6 })} 
           className="px-6 py-3 bg-cyan-600 text-white rounded-2xl font-black text-xs flex items-center gap-2 shadow-xl active:scale-95 transition-all"
         >
           <Plus size={18}/> إضافة عنصر جديد
@@ -136,6 +137,18 @@ const AdminStore: React.FC<AdminStoreProps> = ({ storeItems, onSaveItem, handleF
                        ))}
                     </div>
                   </div>
+
+                  {editingStoreItem.type === 'entry' && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-500 uppercase pr-2 flex items-center gap-1"><Clock size={12} /> مدة ظهور الدخولية (بالثواني)</label>
+                      <input 
+                        type="number" 
+                        value={editingStoreItem.duration || 6} 
+                        onChange={e => setEditingStoreItem({...editingStoreItem, duration: parseInt(e.target.value) || 6})} 
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-blue-400 font-black text-sm outline-none focus:border-cyan-500" 
+                      />
+                    </div>
+                  )}
 
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-500 pr-2">رابط المحتوى المباشر (اختياري)</label>

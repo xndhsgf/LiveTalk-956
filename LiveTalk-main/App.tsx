@@ -431,7 +431,16 @@ export default function App() {
       {showGlobalLeaderboard && <GlobalLeaderboardModal isOpen={showGlobalLeaderboard} onClose={() => setShowGlobalLeaderboard(false)} users={users} />}
       {showVIPModal && <VIPModal user={user} vipLevels={vipLevels} onClose={() => setShowVIPModal(false)} onBuy={handleVIPPurchase} />}
       {showEditProfileModal && <EditProfileModal isOpen={showEditProfileModal} onClose={() => setShowEditProfileModal(false)} currentUser={user} onSave={handleUpdateUser} />}
-      {showBagModal && <BagModal isOpen={showBagModal} onClose={() => setShowBagModal(false)} items={storeItems} user={user} onBuy={(item) => EconomyEngine.spendCoins(user.id, user.coins, user.wealth, item.price, user.ownedItems || [], item.id, handleUpdateUser)} onEquip={(item) => handleUpdateUser(item.type === 'frame' ? { frame: item.url } : item.type === 'bubble' ? { activeBubble: item.url } : { activeEntry: item.url })} />}
+      {showBagModal && <BagModal isOpen={showBagModal} onClose={() => setShowBagModal(false)} items={storeItems} user={user} onBuy={(item) => EconomyEngine.spendCoins(user.id, user.coins, user.wealth, item.price, user.ownedItems || [], item.id, handleUpdateUser)} onEquip={(item) => {
+        const updates: any = {};
+        if (item.type === 'frame') updates.frame = item.url;
+        else if (item.type === 'bubble') updates.activeBubble = item.url;
+        else if (item.type === 'entry') {
+          updates.activeEntry = item.url;
+          updates.activeEntryDuration = item.duration || 6;
+        }
+        handleUpdateUser(updates);
+      }} />}
       {showWalletModal && <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} user={user} onExchange={(amt) => EconomyEngine.exchangeDiamonds(user.id, user.coins, user.diamonds, amt, handleUpdateUser)} onAgencyExchange={handleSalaryToAgencyExchange} />}
       {showAdminPanel && <AdminPanel isOpen={showAdminPanel} onClose={() => setShowAdminPanel(false)} currentUser={user!} users={users} onUpdateUser={handleUpdateAnyUser} rooms={rooms} setRooms={setRooms} onUpdateRoom={handleUpdateRoom} gifts={gifts} storeItems={storeItems} vipLevels={vipLevels} gameSettings={gameSettings} setGameSettings={(s) => setDoc(doc(db, 'appSettings', 'games'), { gameSettings: s }, { merge: true })} appBanner={appBanner} onUpdateAppBanner={(url) => setDoc(doc(db, 'appSettings', 'identity'), { appBanner: url }, { merge: true })} appLogo={appLogo} onUpdateAppLogo={(url) => setDoc(doc(db, 'appSettings', 'identity'), { appLogo: url }, { merge: true })} appName={appName} onUpdateAppName={(name) => setDoc(doc(db, 'appSettings', 'identity'), { appName: name }, { merge: true })} authBackground={authBackground} onUpdateAuthBackground={(url) => setDoc(doc(db, 'appSettings', 'identity'), { authBackground: url }, { merge: true })} />}
       {showCreateRoomModal && <CreateRoomModal isOpen={showCreateRoomModal} onClose={() => setShowCreateRoomModal(false)} onCreate={executeCreateRoom} />}

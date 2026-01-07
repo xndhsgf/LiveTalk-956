@@ -1,3 +1,4 @@
+
 export enum UserLevel {
   NEW = 'جديد',
   BRONZE = 'برونزي',
@@ -16,6 +17,7 @@ export interface StoreItem {
   price: number;
   url: string; // للمقاطع أو الصور الأصلية
   thumbnailUrl?: string; // صورة المعاينة في المتجر
+  duration?: number; // مدة العرض بالثواني (خاص بالدخوليات)
 }
 
 // Added VIPPackage interface to fix export errors across the application
@@ -65,6 +67,7 @@ export interface User {
   frame?: string;
   activeBubble?: string;
   activeEntry?: string; // الدخولية النشطة
+  activeEntryDuration?: number; // مدة الدخولية النشطة
   badge?: string;
   achievements?: string[];
   cover?: string;

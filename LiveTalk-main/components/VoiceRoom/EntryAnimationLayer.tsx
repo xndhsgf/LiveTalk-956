@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../../services/firebase';
@@ -8,21 +9,21 @@ interface EntryEvent {
   userId: string;
   userName: string;
   videoUrl: string;
+  duration?: number;
   timestamp: any;
 }
 
 interface EntryAnimationLayerProps {
   roomId: string;
   currentUserId: string;
-  onActiveChange?: (active: boolean) => void; // مضاف
+  onActiveChange?: (active: boolean) => void;
 }
 
 const EntryAnimationLayer: React.FC<EntryAnimationLayerProps> = ({ roomId, currentUserId, onActiveChange }) => {
   const [activeEntry, setActiveEntry] = useState<EntryEvent | null>(null);
   const playedIds = useRef(new Set<string>());
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // مراقبة النشاط لإبلاغ الغرفة
   useEffect(() => {
     if (onActiveChange) {
       onActiveChange(!!activeEntry);
@@ -47,14 +48,22 @@ const EntryAnimationLayer: React.FC<EntryAnimationLayerProps> = ({ roomId, curre
           const now = Date.now();
           const eventTime = data.timestamp?.toMillis ? data.timestamp.toMillis() : now;
           
+          // قبول الأحداث الجديدة فقط (خلال آخر 15 ثانية)
           if (Math.abs(now - eventTime) < 15000) {
             playedIds.current.add(event.id);
             setActiveEntry(event);
             
-            setTimeout(() => {
+            // إلغاء أي مؤقت سابق لضمان عدم تداخل الأحداث
+            if (timerRef.current) clearTimeout(timerRef.current);
+            
+            // استخدام المدة القادمة من الحدث (محفوظة في بروفايل المستخدم)
+            const displayDuration = (Number(event.duration) || 6) * 1000;
+            
+            timerRef.current = setTimeout(() => {
               setActiveEntry(null);
-              setTimeout(() => playedIds.current.delete(event.id), 20000);
-            }, 6500);
+              // إبقاء المعرف في الذاكرة لفترة لمنع التكرار عند إعادة الاتصال
+              setTimeout(() => playedIds.current.delete(event.id), 30000);
+            }, displayDuration);
           }
         }
       });
@@ -62,6 +71,7 @@ const EntryAnimationLayer: React.FC<EntryAnimationLayerProps> = ({ roomId, curre
 
     return () => {
       unsubscribe();
+      if (timerRef.current) clearTimeout(timerRef.current);
       playedIds.current.clear();
     };
   }, [roomId]);
@@ -77,7 +87,6 @@ const EntryAnimationLayer: React.FC<EntryAnimationLayerProps> = ({ roomId, curre
             className="absolute inset-0 flex items-center justify-center"
           >
              <video 
-               ref={videoRef}
                src={activeEntry.videoUrl} 
                autoPlay 
                playsInline 
