@@ -67,9 +67,6 @@ const UserProfileSheet: React.FC<UserProfileSheetProps> = ({ user: initialUser, 
   const wealthLvl = calculateProfileLvl(Number(user.wealth || 0));
   const rechargeLvl = calculateProfileLvl(Number(user.rechargePoints || 0));
 
-  // الحصول على الآيدي الجميل فقط
-  const displayId = user.customId || "---";
-
   return (
     <div className="fixed inset-0 z-[160] flex items-end justify-center p-0 font-cairo">
       <motion.div 
@@ -174,17 +171,17 @@ const UserProfileSheet: React.FC<UserProfileSheetProps> = ({ user: initialUser, 
             </div>
             
             <button 
-              onClick={() => { navigator.clipboard.writeText(String(displayId)); alert('تم نسخ الـ ID'); }}
+              onClick={() => { navigator.clipboard.writeText(user.customId || user.id); alert('تم نسخ الـ ID'); }}
               className="relative inline-flex items-center justify-center min-h-[40px] group"
             >
               {user.badge ? (
                 <div className="relative flex items-center justify-center h-12 min-w-[120px] px-6">
                    <img src={user.badge} className="absolute inset-0 w-full h-full object-contain z-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-transform group-active:scale-95" alt="ID Badge" />
-                   <span className="relative z-10 text-white font-black text-[13px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] ml-6 uppercase tracking-wider">ID: {displayId}</span>
+                   <span className="relative z-10 text-white font-black text-[13px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] ml-6 uppercase">ID: {user.customId || user.id}</span>
                 </div>
               ) : (
                 <div className="bg-[#3b82f6] text-white px-5 py-2 rounded-full text-xs font-black flex items-center gap-2 w-fit shadow-lg shadow-blue-900/20 active:scale-95 transition-all">
-                   ID: {displayId}
+                   ID: {user.customId || user.id}
                    <Copy size={12} className="opacity-60" />
                 </div>
               )}

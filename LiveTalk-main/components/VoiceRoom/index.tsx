@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../../services/firebase';
 import { doc, collection, addDoc, updateDoc, increment, serverTimestamp, writeBatch, onSnapshot, getDoc, query, orderBy, limit, where, Timestamp, setDoc, deleteDoc, arrayUnion, getDocs } from 'firebase/firestore';
@@ -96,7 +97,6 @@ const VoiceRoom: React.FC<any> = ({
   const comboExpireTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emojiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  // مرجع لتتبع إرسال الدخولية مرة واحدة فقط في هذه الجلسة
   const hasSentEntryRef = useRef<boolean>(false); 
   
   const pendingSyncData = useRef<{giftId: string, count: number, recipients: string[], totalCost: number, totalWin: number} | null>(null);
@@ -109,11 +109,9 @@ const VoiceRoom: React.FC<any> = ({
   const isHost = room.hostId === currentUser.id;
   const isHeaderVisible = true;
 
-  // تعديل: إرسال حدث الدخول مرة واحدة فقط عند "التحميل الأول" للغرفة
   useEffect(() => {
-     // التحقق من وجود دخولية نشطة وأننا لم نقم بإرسالها مسبقاً في هذه الجلسة
      if (!hasSentEntryRef.current && currentUser.activeEntry && currentUser.activeEntry !== '') {
-        hasSentEntryRef.current = true; // تعيين الحالة فوراً لمنع التكرار
+        hasSentEntryRef.current = true;
         
         addDoc(collection(db, 'rooms', initialRoom.id, 'entry_events'), {
            userId: currentUser.id,
@@ -122,7 +120,7 @@ const VoiceRoom: React.FC<any> = ({
            timestamp: serverTimestamp()
         }).catch(err => {
           console.error("Failed to send entry event:", err);
-          hasSentEntryRef.current = false; // إعادة المحاولة في حال الفشل
+          hasSentEntryRef.current = false;
         });
      }
   }, [initialRoom.id, currentUser.id, currentUser.activeEntry]);
@@ -359,11 +357,8 @@ const VoiceRoom: React.FC<any> = ({
 
   const handleSendMessage = (text: string) => {
     if (!text.trim()) return;
-    
-    // حساب المستوى الحقيقي فورياً
     const wealthLvl = calculateLiveLvl(Number(currentUser.wealth || 0));
     const rechargeLvl = calculateLiveLvl(Number(currentUser.rechargePoints || 0));
-    
     const msgData = {
       userId: currentUser.id, userName: currentUser.name,
       userWealthLevel: wealthLvl,
@@ -437,10 +432,25 @@ const VoiceRoom: React.FC<any> = ({
         } catch (e) { alert('حدث خطأ أثناء المسح'); }
       }
     } else if (action === 'reset_charm') {
-      if (confirm('تصفير الجميع؟')) {
-        const updated = localSpeakers.map(s => ({ ...s, charm: 0 }));
-        setLocalSpeakers(updated);
-        queueRoomSpeakersUpdate(updated);
+      if (!isHost) return;
+      if (confirm('تنبيه: هل تريد تصفير الكاريزما للجميع في هذه الغرفة (تصفير الكاس الداخلي)؟')) {
+        try {
+          // 1. تصفير محلي للمتحدثين
+          const updated = localSpeakers.map(s => ({ ...s, charm: 0 }));
+          setLocalSpeakers(updated);
+          queueRoomSpeakersUpdate(updated);
+
+          // 2. تصفير سجل الداعمين في Firestore لهذه الغرفة
+          const contributorsRef = collection(db, 'rooms', initialRoom.id, 'contributors');
+          const snap = await getDocs(contributorsRef);
+          const batch = writeBatch(db);
+          snap.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+
+          alert('تم تصفير كاريزما الغرفة والترتيب بنجاح ✅');
+        } catch (e) {
+          alert('فشل التصفير');
+        }
       }
     }
   };
@@ -520,7 +530,6 @@ const VoiceRoom: React.FC<any> = ({
         });
       }
 
-      // حساب المستويات الحقيقية فوراً لرسالة الهدية
       const wealthLvl = calculateLiveLvl(Number(currentUser.wealth || 0) + cost);
       const rechargeLvl = calculateLiveLvl(Number(currentUser.rechargePoints || 0));
 
@@ -614,6 +623,7 @@ const VoiceRoom: React.FC<any> = ({
       {showLuckyBag && <LuckyBagModal isOpen={showLuckyBag} onClose={() => setShowLuckyBag(false)} userCoins={Number(currentUser.coins)} onSend={handleSendLuckyBag} />}
       <GameCenterModal isOpen={showGameCenter} onClose={() => setShowGameCenter(false)} onSelectGame={(game) => { setActiveGame(game); setShowGameCenter(false); }} />
       
+      {/* Fixed: Use currentUser instead of non-existent user */}
       {activeGame === 'wheel' && <WheelGameModal isOpen={activeGame === 'wheel'} onClose={() => setActiveGame(null)} userCoins={Number(currentUser.coins)} onUpdateCoins={(c) => onUpdateUser({ coins: c })} winRate={gameSettings.wheelWinRate} gameSettings={gameSettings} />}
       {activeGame === 'slots' && <SlotsGameModal isOpen={activeGame === 'slots'} onClose={() => setActiveGame(null)} userCoins={Number(currentUser.coins)} onUpdateCoins={(c) => onUpdateUser({ coins: c })} winRate={gameSettings.slotsWinRate} gameSettings={gameSettings} />}
       {activeGame === 'lion' && <LionWheelGameModal isOpen={activeGame === 'lion'} onClose={() => setActiveGame(null)} userCoins={Number(currentUser.coins)} onUpdateCoins={(c) => onUpdateUser({ coins: c })} gameSettings={gameSettings} />}

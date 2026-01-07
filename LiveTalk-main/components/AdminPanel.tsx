@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, ShieldCheck, Activity, Gift as GiftIcon, ShoppingBag, 
-  Crown, Smartphone, Eraser, X, Medal, IdCard, Layout, Zap, Smile, Heart, Building, Image as ImageIcon, UserCircle, Home, Menu
+  Crown, Smartphone, Eraser, X, Medal, IdCard, Layout, Zap, Smile, Heart, Building, Image as ImageIcon, UserCircle, Home, Menu, ChevronLeft
 } from 'lucide-react';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -82,7 +83,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
   const isModerator = props.currentUser.isSystemModerator;
 
   const menuItems = [
-    { id: 'users', label: 'الأعضاء', icon: Users, color: 'text-blue-400' },
+    { id: 'users', label: 'إدارة الأعضاء', icon: Users, color: 'text-blue-400' },
     { id: 'rooms_manage', label: 'إدارة الغرف', icon: Home, color: 'text-red-500' },
     { id: 'defaults', label: 'صور البداية', icon: UserCircle, color: 'text-indigo-400' },
     { id: 'badges', label: 'أوسمة الشرف', icon: Medal, color: 'text-yellow-500' },
@@ -94,11 +95,11 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     { id: 'relationships', label: 'نظام الارتباط', icon: Heart, color: 'text-pink-500' },
     { id: 'agency', label: 'الوكالات (شحن)', icon: Zap, color: 'text-orange-500' },
     { id: 'games', label: 'مركز الحظ', icon: Activity, color: 'text-orange-400' },
-    { id: 'gifts', label: 'الهدايا', icon: GiftIcon, color: 'text-pink-400' },
-    { id: 'store', label: 'المتجر', icon: ShoppingBag, color: 'text-cyan-400' },
-    { id: 'vip', label: 'الـ VIP', icon: Crown, color: 'text-amber-400' },
-    { id: 'identity', label: 'الهوية', icon: Smartphone, color: 'text-emerald-400' },
-    { id: 'maintenance', label: 'الصيانة', icon: Eraser, color: 'text-red-500' },
+    { id: 'gifts', label: 'إدارة الهدايا', icon: GiftIcon, color: 'text-pink-400' },
+    { id: 'store', label: 'إدارة المتجر', icon: ShoppingBag, color: 'text-cyan-400' },
+    { id: 'vip', label: 'إدارة الـ VIP', icon: Crown, color: 'text-amber-400' },
+    { id: 'identity', label: 'هوية التطبيق', icon: Smartphone, color: 'text-emerald-400' },
+    { id: 'maintenance', label: 'صيانة النظام', icon: Eraser, color: 'text-red-500' },
   ];
 
   const allowedMenuItems = menuItems.filter(item => {
@@ -132,85 +133,116 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     }
   };
 
+  const handleUpdateGameSettings = async (updates: Partial<GameSettings>) => {
+    const newSettings = { ...props.gameSettings, ...updates };
+    await props.setGameSettings(newSettings);
+  };
+
   return (
-    <div className="fixed inset-0 z-[2000] bg-[#020617] flex flex-col md:flex-row font-cairo overflow-hidden text-right" dir="rtl">
-      {/* Top Mobile Bar */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-slate-950 border-b border-white/5 z-[2100]">
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-white bg-white/5 rounded-xl">
-          <Menu size={24} />
-        </button>
-        <span className="font-black text-white text-sm">{allowedMenuItems.find(i => i.id === activeTab)?.label || 'السيستم'}</span>
-        <button onClick={props.onClose} className="p-2 text-red-500 bg-red-500/10 rounded-xl">
+    <div className="fixed inset-0 z-[3000] bg-[#020617] flex flex-col md:flex-row font-cairo overflow-hidden text-right" dir="rtl">
+      
+      {/* Mobile Top Header */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-slate-950 border-b border-white/5 shrink-0 z-[3005]">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 bg-white/5 rounded-xl text-white active:scale-95 transition-transform"
+          >
+            <Menu size={24} />
+          </button>
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={18} className="text-blue-400" />
+            <span className="text-xs font-black text-white">{menuItems.find(i => i.id === activeTab)?.label}</span>
+          </div>
+        </div>
+        <button onClick={props.onClose} className="p-2 text-slate-500">
           <X size={24} />
         </button>
       </div>
 
-      {/* Sidebar - المتجاوب */}
-      <motion.div 
-        className={`fixed md:relative inset-y-0 right-0 w-72 md:w-64 bg-slate-950 border-l border-white/5 flex flex-col shrink-0 shadow-2xl z-[2200] transition-transform duration-300 md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
-      >
-        <div className="p-6 border-b border-white/5 hidden md:flex items-center justify-between">
-          <span className="font-black text-white">{isRootAdmin ? 'المدير العام' : 'لوحة المشرف'}</span>
-          <button onClick={props.onClose} className="text-slate-400 p-2"><X size={24}/></button>
-        </div>
-        
-        {/* Mobile Header in Sidebar */}
-        <div className="p-6 border-b border-white/5 md:hidden flex justify-between items-center">
-           <span className="font-black text-white text-lg">قائمة الأقسام</span>
-           <button onClick={() => setIsSidebarOpen(false)} className="text-white bg-white/10 p-1 rounded-lg"><X size={20}/></button>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar scrollbar-hide">
-          {allowedMenuItems.map(item => (
-            <button 
-              key={item.id} 
-              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }} 
-              className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl transition-all ${activeTab === item.id ? 'bg-white/10 text-white shadow-lg' : 'text-slate-500 hover:bg-white/5'}`}
-            >
-              <item.icon size={20} className={activeTab === item.id ? item.color : ''} />
-              <span className="text-xs font-black">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-        
-        <div className="p-4 md:hidden">
-           <button onClick={props.onClose} className="w-full py-4 bg-red-600/10 text-red-500 rounded-2xl font-black text-xs">إغلاق اللوحة</button>
-        </div>
-      </motion.div>
-
-      {/* Overlay for Mobile Sidebar */}
+      {/* Desktop Sidebar / Mobile Drawer Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }} 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2150] md:hidden"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[3010] md:hidden"
           />
         )}
       </AnimatePresence>
 
-      {/* Content Area */}
-      <div className="flex-1 bg-slate-900/40 overflow-y-auto p-4 md:p-10 custom-scrollbar scrollbar-hide transition-all duration-100">
-        <div className="max-w-full overflow-x-hidden">
-          {activeTab === 'users' && <AdminUsers users={props.users} vipLevels={props.vipLevels} onUpdateUser={props.onUpdateUser} currentUser={props.currentUser} />}
-          {activeTab === 'rooms_manage' && <AdminRooms rooms={props.rooms} />}
-          {activeTab === 'defaults' && <AdminDefaults handleFileUpload={handleFileUpload} />}
-          {activeTab === 'badges' && <AdminBadges users={props.users} onUpdateUser={props.onUpdateUser} />}
-          {activeTab === 'id_badges' && <AdminIdBadges users={props.users} onUpdateUser={props.onUpdateUser} />}
-          {activeTab === 'host_agency' && <AdminHostAgencies users={props.users} onUpdateUser={props.onUpdateUser} />}
-          {activeTab === 'room_bgs' && <AdminBackgrounds handleFileUpload={handleFileUpload} />}
-          {activeTab === 'mic_skins' && <AdminMicSkins handleFileUpload={handleFileUpload} />}
-          {activeTab === 'agency' && <AdminAgency users={props.users} onUpdateUser={props.onUpdateUser} />}
-          {activeTab === 'emojis' && <AdminEmojis gameSettings={props.gameSettings} onUpdateGameSettings={(s) => props.setGameSettings({...props.gameSettings, ...s})} handleFileUpload={handleFileUpload} />}
-          {activeTab === 'relationships' && <AdminRelationships gameSettings={props.gameSettings} onUpdateGameSettings={(s) => props.setGameSettings({...props.gameSettings, ...s})} handleFileUpload={handleFileUpload} />}
-          {activeTab === 'games' && <AdminGames gameSettings={props.gameSettings} onUpdateGameSettings={(s) => props.setGameSettings({...props.gameSettings, ...s})} handleFileUpload={handleFileUpload} />}
-          {activeTab === 'gifts' && <AdminGifts gifts={props.gifts} onSaveGift={async (g, d) => { const ref = doc(db, 'gifts', g.id); d ? await deleteDoc(ref) : await setDoc(ref, g); }} handleFileUpload={handleFileUpload} />}
-          {activeTab === 'store' && <AdminStore storeItems={props.storeItems} onSaveItem={async (i, d) => { const ref = doc(db, 'store', i.id); d ? await deleteDoc(ref) : await setDoc(ref, i); }} handleFileUpload={handleFileUpload} />}
-          {activeTab === 'vip' && <AdminVIP vipLevels={props.vipLevels} onSaveVip={async (v, d) => { const id = `vip_lvl_${v.level}`; const ref = doc(db, 'vip', id); d ? await deleteDoc(ref) : await setDoc(ref, { ...v, id }); }} handleFileUpload={handleFileUpload} />}
-          {activeTab === 'identity' && <AdminIdentity appLogo={props.appLogo} appBanner={props.appBanner} appName={props.appName} authBackground={props.authBackground} onUpdateAppLogo={props.onUpdateAppLogo} onUpdateAppBanner={props.onUpdateAppBanner} onUpdateAppName={props.onUpdateAppName} onUpdateAuthBackground={props.onUpdateAuthBackground} handleFileUpload={handleFileUpload} />}
-          {activeTab === 'maintenance' && <AdminMaintenance currentUser={props.currentUser} />}
+      {/* Main Sidebar (Floating on Mobile) */}
+      <motion.div 
+        className={`fixed md:relative top-0 right-0 h-full w-[280px] md:w-72 bg-slate-950 border-l border-white/5 flex flex-col shrink-0 shadow-2xl z-[3011] transition-transform md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="p-6 border-b border-white/5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/40">
+                  <ShieldCheck size={22} className="text-white" />
+               </div>
+               <div className="text-right">
+                 <p className="font-black text-xs text-white leading-none mb-1">لوحة التحكم</p>
+                 <p className="text-[10px] text-slate-500 font-bold uppercase">{isRootAdmin ? 'المدير العام' : 'مشرف نظام'}</p>
+               </div>
+            </div>
+            <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-slate-400">
+               <X size={20} />
+            </button>
+          </div>
+        </div>
+        
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1.5 scrollbar-hide">
+          {allowedMenuItems.map(item => (
+            <button 
+              key={item.id} 
+              onClick={() => {
+                setActiveTab(item.id);
+                setIsSidebarOpen(false);
+              }} 
+              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all group ${activeTab === item.id ? 'bg-blue-600/10 text-white border border-blue-500/20' : 'text-slate-500 hover:bg-white/5'}`}
+            >
+              <div className="flex items-center gap-3">
+                <item.icon size={20} className={activeTab === item.id ? item.color : 'group-hover:text-slate-300'} />
+                <span className="text-xs font-black">{item.label}</span>
+              </div>
+              {activeTab === item.id && <ChevronLeft size={14} className="text-blue-500" />}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-white/5">
+           <button 
+            onClick={props.onClose}
+            className="w-full py-3 bg-red-600/10 text-red-500 rounded-xl text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"
+           >
+              إغلاق اللوحة <X size={14} />
+           </button>
+        </div>
+      </motion.div>
+
+      {/* Main Content Content Area */}
+      <div className="flex-1 bg-[#020617] overflow-y-auto p-4 md:p-10 scrollbar-hide pb-20 md:pb-10 relative">
+        <div className="max-w-7xl mx-auto">
+            {activeTab === 'users' && <AdminUsers users={props.users} vipLevels={props.vipLevels} onUpdateUser={props.onUpdateUser} currentUser={props.currentUser} />}
+            {activeTab === 'rooms_manage' && <AdminRooms rooms={props.rooms} />}
+            {activeTab === 'defaults' && <AdminDefaults handleFileUpload={handleFileUpload} />}
+            {activeTab === 'badges' && <AdminBadges users={props.users} onUpdateUser={props.onUpdateUser} />}
+            {activeTab === 'id_badges' && <AdminIdBadges users={props.users} onUpdateUser={props.onUpdateUser} />}
+            {activeTab === 'host_agency' && <AdminHostAgencies users={props.users} onUpdateUser={props.onUpdateUser} />}
+            {activeTab === 'room_bgs' && <AdminBackgrounds handleFileUpload={handleFileUpload} />}
+            {activeTab === 'mic_skins' && <AdminMicSkins handleFileUpload={handleFileUpload} />}
+            {activeTab === 'agency' && <AdminAgency users={props.users} onUpdateUser={props.onUpdateUser} />}
+            {activeTab === 'emojis' && <AdminEmojis gameSettings={props.gameSettings} onUpdateGameSettings={handleUpdateGameSettings} handleFileUpload={handleFileUpload} />}
+            {activeTab === 'relationships' && <AdminRelationships gameSettings={props.gameSettings} onUpdateGameSettings={handleUpdateGameSettings} handleFileUpload={handleFileUpload} />}
+            {activeTab === 'games' && <AdminGames gameSettings={props.gameSettings} onUpdateGameSettings={handleUpdateGameSettings} handleFileUpload={handleFileUpload} />}
+            {activeTab === 'gifts' && <AdminGifts gifts={props.gifts} onSaveGift={async (g, d) => { const ref = doc(db, 'gifts', g.id); d ? await deleteDoc(ref) : await setDoc(ref, g); }} handleFileUpload={handleFileUpload} />}
+            {activeTab === 'store' && <AdminStore storeItems={props.storeItems} onSaveItem={async (i, d) => { const ref = doc(db, 'store', i.id); d ? await deleteDoc(ref) : await setDoc(ref, i); }} handleFileUpload={handleFileUpload} />}
+            {activeTab === 'vip' && <AdminVIP vipLevels={props.vipLevels} onSaveVip={async (v, d) => { const id = `vip_lvl_${v.level}`; const ref = doc(db, 'vip', id); d ? await deleteDoc(ref) : await setDoc(ref, { ...v, id }); }} handleFileUpload={handleFileUpload} />}
+            {activeTab === 'identity' && <AdminIdentity appLogo={props.appLogo} appBanner={props.appBanner} appName={props.appName} authBackground={props.authBackground} onUpdateAppLogo={props.onUpdateAppLogo} onUpdateAppBanner={props.onUpdateAppBanner} onUpdateAppName={props.onUpdateAppName} onUpdateAuthBackground={props.onUpdateAuthBackground} handleFileUpload={handleFileUpload} />}
+            {activeTab === 'maintenance' && <AdminMaintenance currentUser={props.currentUser} />}
         </div>
       </div>
     </div>
