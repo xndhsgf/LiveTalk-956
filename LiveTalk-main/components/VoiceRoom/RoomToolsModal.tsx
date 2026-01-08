@@ -23,13 +23,13 @@ const RoomToolsModal: React.FC<RoomToolsModalProps> = ({ isOpen, onClose, onActi
     { id: 'clear_chat', label: 'حذف الدردشة', icon: Trash2, color: 'bg-red-600' },
   ];
 
-  // تصفية الأدوات: صاحب الغرفة يرى الكل، المستخدم العادي يرى صندوق الحظ والترتيب فقط
+  // تصفية الأدوات
   const tools = isHost 
     ? allTools 
     : allTools.filter(t => t.id === 'luckybag' || t.id === 'rank');
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center pointer-events-none">
+    <div className="fixed inset-0 z-[1500] flex items-end justify-center pointer-events-none">
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 

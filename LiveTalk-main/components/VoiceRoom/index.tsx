@@ -37,6 +37,7 @@ const calculateLiveLvl = (pts: number) => {
   return Math.max(1, Math.min(200, l));
 };
 
+// شارة المستوى
 const ChatLevelBadge: React.FC<{ level: number; type: 'wealth' | 'recharge' }> = ({ level, type }) => {
   const isWealth = type === 'wealth';
   return (
@@ -87,6 +88,9 @@ const VoiceRoom: React.FC<any> = ({
   const [micSkins, setMicSkins] = useState<Record<string, string>>({});
   const [selectedRecipientIds, setSelectedRecipientIds] = useState<string[]>([]);
   
+  // حفظ وقت الانضمام
+  const [joinTime] = useState(() => Timestamp.now());
+  
   const [isGiftActive, setIsGiftActive] = useState(false);
   const [isEntryActive, setIsEntryActive] = useState(false);
   
@@ -113,7 +117,7 @@ const VoiceRoom: React.FC<any> = ({
   const isModerator = room.moderators?.includes(currentUser.id);
   const canAdmin = isHost || isModerator;
 
-  // إرسال دخولية المستخدم فور انضمامه للغرفة مع مراعاة المدة
+  // إرسال دخولية المستخدم
   useEffect(() => {
     if (!initialRoom.id || !currentUser.id || hasSentEntryRef.current) return;
     
@@ -122,7 +126,7 @@ const VoiceRoom: React.FC<any> = ({
         userId: currentUser.id,
         userName: currentUser.name,
         videoUrl: currentUser.activeEntry,
-        duration: currentUser.activeEntryDuration || 6, // إرسال المدة
+        duration: currentUser.activeEntryDuration || 6, 
         timestamp: serverTimestamp()
       }).catch(e => console.error("Entry Trigger Failed", e));
       
@@ -130,7 +134,36 @@ const VoiceRoom: React.FC<any> = ({
     }
   }, [initialRoom.id, currentUser.id, currentUser.activeEntry, currentUser.activeEntryDuration]);
 
-  // جلب أشكال المايكات المخصصة من السيستم
+  // مستمع رسائل الدردشة
+  useEffect(() => {
+    if (!initialRoom.id) return;
+    
+    const q = query(
+      collection(db, 'rooms', initialRoom.id, 'messages'),
+      where('timestamp', '>=', joinTime),
+      orderBy('timestamp', 'asc'),
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      const newMessages = snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      }));
+      setMessages(newMessages);
+    });
+
+    return () => unsubscribe();
+  }, [initialRoom.id, joinTime]);
+
+  // التمرير لآخر رسالة
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [messages]);
+
+  // جلب أشكال المايكات
   useEffect(() => {
     const unsubSkins = onSnapshot(doc(db, 'appSettings', 'micSkins'), (snap) => {
       if (snap.exists()) {
@@ -140,10 +173,8 @@ const VoiceRoom: React.FC<any> = ({
     return () => unsubSkins();
   }, []);
 
-  // فحص الحظر الفوري عند الدخول
   useEffect(() => {
     if (room.kickedUsers?.includes(currentUser.id)) {
-      alert('لقد تم حظرك من دخول هذه الغرفة');
       onLeave();
     }
   }, [room.kickedUsers, currentUser.id]);
@@ -185,7 +216,6 @@ const VoiceRoom: React.FC<any> = ({
         if (!roomSyncTimerRef.current) {
           setLocalMicCount(Number(roomData.micCount || 8));
         }
-        // إذا تم طرد المستخدم حالياً، نخرجه فوراً
         if (roomData.kickedUsers?.includes(currentUser.id)) {
           onLeave();
         }
@@ -194,7 +224,6 @@ const VoiceRoom: React.FC<any> = ({
     return () => unsubRoom();
   }, [initialRoom.id, currentUser.id]);
 
-  // Listen for lucky bags in this room
   useEffect(() => {
     const q = query(
       collection(db, 'lucky_bags'),
@@ -246,15 +275,13 @@ const VoiceRoom: React.FC<any> = ({
     }, 2500); 
   }, [initialRoom.id, localMicCount]);
 
-  // إدارة مؤقت اختفاء زر الكومبو
   const startComboExpiryTimer = useCallback(() => {
     if (comboExpireTimerRef.current) clearTimeout(comboExpireTimerRef.current);
     comboExpireTimerRef.current = setTimeout(() => {
       setComboState(null);
-    }, 5000); // 5 ثواني كما هو مطلوب
+    }, 5000); 
   }, []);
 
-  // تنفيذ الأوامر الإدارية من البروفايل
   const handleAdminActionFromProfile = async (action: string, targetUser: User) => {
     if (!canAdmin) return;
     const roomRef = doc(db, 'rooms', initialRoom.id);
@@ -268,29 +295,24 @@ const VoiceRoom: React.FC<any> = ({
       case 'removeModerator':
         if (!isHost) return;
         await updateDoc(roomRef, { moderators: arrayRemove(targetUser.id) });
-        alert(`تم سحب الإشراف من ${targetUser.name} ❌`);
         break;
       case 'removeMic':
         const updatedAfterMicRemove = localSpeakers.filter(s => s.id !== targetUser.id);
         setLocalSpeakers(updatedAfterMicRemove);
         queueRoomSpeakersUpdate(updatedAfterMicRemove);
-        alert(`تم إنزال ${targetUser.name} من المايك ✅`);
         break;
       case 'kickAndBan':
-        // حظر دائم من الغرفة وتنزيله من المايك
         const updatedAfterKick = localSpeakers.filter(s => s.id !== targetUser.id);
         setLocalSpeakers(updatedAfterKick);
         await updateDoc(roomRef, { 
           kickedUsers: arrayUnion(targetUser.id),
           speakers: updatedAfterKick
         });
-        alert(`تم طرد وحظر ${targetUser.name} من الغرفة نهائياً ✅`);
         break;
       case 'resetUserCharm':
         const updatedAfterCharmReset = localSpeakers.map(s => s.id === targetUser.id ? { ...s, charm: 0 } : s);
         setLocalSpeakers(updatedAfterCharmReset);
         queueRoomSpeakersUpdate(updatedAfterCharmReset);
-        alert(`تم تصفير كاريزما ${targetUser.name} بنجاح ✅`);
         break;
     }
   };
@@ -322,7 +344,7 @@ const VoiceRoom: React.FC<any> = ({
     setShowGifts(false);
     if (executeGiftSendOptimistic(gift, quantity, selectedRecipientIds, false)) {
       setComboState({ gift, recipients: [...selectedRecipientIds], count: quantity });
-      startComboExpiryTimer(); // بدء مؤقت الاختفاء
+      startComboExpiryTimer(); 
     }
   };
 
@@ -385,12 +407,23 @@ const VoiceRoom: React.FC<any> = ({
     }
     const wealthLvl = calculateLiveLvl(Number(currentUser.wealth || 0) + cost);
     batch.set(doc(collection(db, 'rooms', initialRoom.id, 'messages')), { userId: currentUser.id, userName: currentUser.name, userWealthLevel: wealthLvl, userRechargeLevel: calculateLiveLvl(Number(currentUser.rechargePoints || 0)), content: win > 0 ? `أرسل ${gift.name} x${qty} وفاز بـ ${win.toLocaleString()} 🪙!` : `أرسل ${gift.name} x${qty} 🎁`, type: 'gift', isLuckyWin: win > 0, timestamp: serverTimestamp() });
-    batch.commit(); queueRoomSpeakersUpdate(speakers);
+    batch.commit(); batch.commit(); queueRoomSpeakersUpdate(speakers);
   };
 
   const handleSendMessage = (text: string) => {
     if (!text.trim()) return;
-    addDoc(collection(db, 'rooms', initialRoom.id, 'messages'), { userId: currentUser.id, userName: currentUser.name, userWealthLevel: calculateLiveLvl(Number(currentUser.wealth || 0)), userRechargeLevel: calculateLiveLvl(Number(currentUser.rechargePoints || 0)), userAchievements: currentUser.achievements || [], userBubble: currentUser.activeBubble || null, userVip: currentUser.isVip || false, content: text, type: 'text', timestamp: serverTimestamp() });
+    addDoc(collection(db, 'rooms', initialRoom.id, 'messages'), { 
+        userId: currentUser.id, 
+        userName: currentUser.name, 
+        userWealthLevel: calculateLiveLvl(Number(currentUser.wealth || 0)), 
+        userRechargeLevel: calculateLiveLvl(Number(currentUser.rechargePoints || 0)), 
+        userAchievements: currentUser.achievements || [], 
+        userBubble: currentUser.activeBubble || null, 
+        userVip: currentUser.isVip || false, 
+        content: text, 
+        type: 'text', 
+        timestamp: serverTimestamp() 
+    });
   };
 
   const handleSendEmoji = async (emoji: string) => {
@@ -417,15 +450,23 @@ const VoiceRoom: React.FC<any> = ({
       const filtered = localSpeakers.filter(s => Number(s.seatIndex) < next);
       setLocalSpeakers(filtered); queueRoomSpeakersUpdate(filtered, next);
     } else if (action === 'clear_chat') {
-      if (!confirm('مسح الدردشة؟')) return;
-      const snap = await getDocs(collection(db, 'rooms', initialRoom.id, 'messages'));
-      const batch = writeBatch(db); snap.forEach(d => batch.delete(d.ref)); await batch.commit();
+      if (!confirm('هل تريد مسح جميع رسائل الدردشة في هذه الغرفة نهائياً؟')) return;
+      try {
+        const snap = await getDocs(collection(db, 'rooms', initialRoom.id, 'messages'));
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        alert('تم مسح الدردشة بنجاح ✅');
+      } catch (e) {
+        alert('فشل مسح الدردشة، يرجى المحاولة لاحقاً');
+      }
     } else if (action === 'reset_charm') {
       if (!confirm('تصفير كاريزما الغرفة؟')) return;
       const updated = localSpeakers.map(s => ({ ...s, charm: 0 }));
       setLocalSpeakers(updated); queueRoomSpeakersUpdate(updated);
       const snap = await getDocs(collection(db, 'rooms', initialRoom.id, 'contributors'));
       const batch = writeBatch(db); snap.forEach(d => batch.delete(d.ref)); await batch.commit();
+      alert('تم تصفير كاريزما الغرفة ✅');
     }
   };
 
@@ -483,8 +524,10 @@ const VoiceRoom: React.FC<any> = ({
     <div className="fixed inset-0 z-[150] flex flex-col bg-slate-950 font-cairo overflow-hidden text-right">
       <RoomBackground background={room.background} />
       
-      <GiftAnimationLayer ref={giftAnimRef} roomId={initialRoom.id} speakers={localSpeakers} currentUserId={currentUser.id} onActiveChange={setIsGiftActive} />
-      <EntryAnimationLayer roomId={initialRoom.id} currentUserId={currentUser.id} onActiveChange={setIsEntryActive} />
+      <div className="absolute inset-0 pointer-events-none z-[800]">
+        <GiftAnimationLayer ref={giftAnimRef} roomId={initialRoom.id} speakers={localSpeakers} currentUserId={currentUser.id} onActiveChange={setIsGiftActive} />
+        <EntryAnimationLayer roomId={initialRoom.id} currentUserId={currentUser.id} onActiveChange={setIsEntryActive} />
+      </div>
       
       <RoomHeader room={room} onLeave={onLeave} onMinimize={onMinimize} onShowParticipants={() => setShowParticipants(true)} />
       
@@ -508,11 +551,17 @@ const VoiceRoom: React.FC<any> = ({
           )}
         </div>
         
-        <div className="h-64 px-4 mb-4 overflow-hidden relative z-[60]" dir="rtl">
+        {/* منطقة الدردشة - تم خفض الـ z-index لمنع ظهور الرسائل فوق القوائم */}
+        <div className="h-64 px-4 mb-4 overflow-hidden relative z-[10]" dir="rtl">
            <div ref={chatContainerRef} className="h-full overflow-y-auto scrollbar-hide space-y-4 flex flex-col pb-4 pointer-events-auto touch-pan-y">
               <div className="flex-1" />
               {messages.map((msg) => (
-                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} key={msg.id} className="flex items-start gap-2">
+                <motion.div 
+                   key={msg.id || Math.random()} 
+                   initial={{ opacity: 0, x: 20 }} 
+                   animate={{ opacity: 1, x: 0 }} 
+                   className="flex items-start gap-2"
+                >
                    <div className="flex flex-col items-start">
                       <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
                          <ChatLevelBadge level={msg.userWealthLevel || 1} type="wealth" />
@@ -521,7 +570,7 @@ const VoiceRoom: React.FC<any> = ({
                          <div className="flex items-center gap-1 mr-1">{msg.userAchievements?.slice(0, 5).map((medal: string, idx: number) => (<img key={idx} src={medal} className="w-8 h-8 object-contain filter drop-shadow-md brightness-110" alt="medal" />))}</div>
                       </div>
                       <div className={`relative min-h-[42px] w-fit max-w-[260px] px-7 py-3 flex items-center justify-center text-center shadow-2xl ${msg.isLuckyWin ? 'bg-gradient-to-r from-amber-600/40 to-yellow-500/40 border border-amber-500/50 rounded-2xl' : !msg.userBubble ? 'bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl rounded-tr-none' : ''}`} style={msg.userBubble ? { backgroundImage: `url(${msg.userBubble})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', minWidth: '95px' } : {}}>
-                         <p className={`text-[13px] font-black text-white leading-relaxed break-words drop-shadow-0_1px_3px_rgba(0,0,0,0.8) ${msg.isLuckyWin ? 'text-yellow-200' : ''}`}>{msg.content}</p>
+                         <p className={`text-[13px] font-black text-white leading-relaxed break-words drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] ${msg.isLuckyWin ? 'text-yellow-200' : ''}`}>{msg.content}</p>
                       </div>
                    </div>
                 </motion.div>
@@ -538,7 +587,7 @@ const VoiceRoom: React.FC<any> = ({
               onHit={() => { 
                 setComboState(p => p ? { ...p, count: p.count + 1 } : null); 
                 executeGiftSendOptimistic(comboState.gift, 1, comboState.recipients, true); 
-                startComboExpiryTimer(); // إعادة تعيين المؤقت عند الضغط
+                startComboExpiryTimer(); 
               }} 
               duration={5000} 
             />

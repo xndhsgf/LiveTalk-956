@@ -21,7 +21,7 @@ interface EntryAnimationLayerProps {
 
 const EntryAnimationLayer: React.FC<EntryAnimationLayerProps> = ({ roomId, currentUserId, onActiveChange }) => {
   const [activeEntry, setActiveEntry] = useState<EntryEvent | null>(null);
-  const [showLabel, setShowLabel] = useState(false); // حالة جديدة للتحكم في بطاقة الاسم
+  const [showLabel, setShowLabel] = useState(false); 
   const playedIds = useRef(new Set<string>());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const labelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,20 +52,22 @@ const EntryAnimationLayer: React.FC<EntryAnimationLayerProps> = ({ roomId, curre
           
           if (Math.abs(now - eventTime) < 15000) {
             playedIds.current.add(event.id);
+            
+            // تهيئة الدخولية الجديدة
             setActiveEntry(event);
-            setShowLabel(true); // إظهار البطاقة فوراً
+            setShowLabel(true); 
             
             if (timerRef.current) clearTimeout(timerRef.current);
             if (labelTimerRef.current) clearTimeout(labelTimerRef.current);
             
-            // إخفاء البطاقة (الجزء الأحمر) بعد ثانيتين فقط
+            // إخفاء البطاقة النصية (الجزء الأحمر) بعد ثانيتين فقط
             labelTimerRef.current = setTimeout(() => {
               setShowLabel(false);
             }, 2000);
 
             const displayDuration = (Number(event.duration) || 6) * 1000;
             
-            // إنهاء الدخولية بالكامل بعد المدة المحددة
+            // إنهاء فيديو الدخولية بالكامل بعد الوقت المحدد في المتجر
             timerRef.current = setTimeout(() => {
               setActiveEntry(null);
               setShowLabel(false);
@@ -89,17 +91,17 @@ const EntryAnimationLayer: React.FC<EntryAnimationLayerProps> = ({ roomId, curre
       <AnimatePresence>
         {activeEntry && (
           <motion.div 
+            key={activeEntry.id}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 flex items-center justify-center"
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
           >
-             {/* فيديو الدخولية يستمر للمدة الكاملة */}
              <video 
                src={activeEntry.videoUrl} 
                autoPlay 
                playsInline 
-               className="w-full h-full object-cover"
+               className="w-full h-full object-cover pointer-events-none"
                onPlay={(e) => {
                  const video = e.target as HTMLVideoElement;
                  video.volume = 0.6;
@@ -107,15 +109,15 @@ const EntryAnimationLayer: React.FC<EntryAnimationLayerProps> = ({ roomId, curre
                }}
              />
              
-             {/* بطاقة الاسم (الجزء الأحمر) تظهر وتختفي بشكل مستقل */}
              <AnimatePresence>
                {showLabel && (
                  <motion.div 
+                   key={`label-${activeEntry.id}`}
                    initial={{ y: 100, opacity: 0, scale: 0.8 }}
                    animate={{ y: 0, opacity: 1, scale: 1 }}
                    exit={{ y: 50, opacity: 0, scale: 0.9 }}
                    transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                   className="absolute bottom-24 bg-black/80 backdrop-blur-2xl border border-amber-500/50 px-10 py-4 rounded-full shadow-[0_0_50px_rgba(245,158,11,0.5)] flex items-center gap-5 z-[1000]"
+                   className="absolute bottom-24 bg-black/80 backdrop-blur-2xl border border-amber-500/50 px-10 py-4 rounded-full shadow-[0_0_50px_rgba(245,158,11,0.5)] flex items-center gap-5 z-[1000] pointer-events-none"
                  >
                     <motion.div 
                       animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}

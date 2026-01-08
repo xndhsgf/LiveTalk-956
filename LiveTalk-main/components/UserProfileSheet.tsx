@@ -67,7 +67,7 @@ const UserProfileSheet: React.FC<UserProfileSheetProps> = ({ user: initialUser, 
   const rechargeLvl = calculateProfileLvl(Number(user.rechargePoints || 0));
 
   return (
-    <div className="fixed inset-0 z-[160] flex items-end justify-center p-0 font-cairo">
+    <div className="fixed inset-0 z-[1500] flex items-end justify-center p-0 font-cairo">
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
@@ -231,14 +231,14 @@ const UserProfileSheet: React.FC<UserProfileSheetProps> = ({ user: initialUser, 
         </div>
       </motion.div>
 
-      {/* Admin Quick Menu - تم تطويره ليشمل كافة الصلاحيات المطلوبة */}
+      {/* Admin Quick Menu */}
       <AnimatePresence>
         {showAdminMenu && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }} 
             animate={{ opacity: 1, scale: 1 }} 
             exit={{ opacity: 0, scale: 0.9 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
           >
              <div className="bg-[#0f172a] border border-white/10 rounded-[2.5rem] w-full max-w-sm p-6 shadow-2xl space-y-3 overflow-hidden relative">
                 <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-4">
@@ -249,7 +249,6 @@ const UserProfileSheet: React.FC<UserProfileSheetProps> = ({ user: initialUser, 
                    <button onClick={() => setShowAdminMenu(false)} className="p-1 hover:bg-white/5 rounded-lg"><X size={20} className="text-slate-500" /></button>
                 </div>
 
-                {/* صلاحية المالك لتعيين مشرفين دائمين */}
                 {isHost && (
                    <button 
                      onClick={() => { onAction(isTargetModerator ? 'removeModerator' : 'addModerator'); setShowAdminMenu(false); }} 
@@ -263,7 +262,6 @@ const UserProfileSheet: React.FC<UserProfileSheetProps> = ({ user: initialUser, 
                    </button>
                 )}
 
-                {/* صلاحية تنزيل المايك (للمالك والمشرف) */}
                 {canManage && (
                    <button 
                      onClick={() => { onAction('removeMic'); setShowAdminMenu(false); }} 
@@ -273,7 +271,6 @@ const UserProfileSheet: React.FC<UserProfileSheetProps> = ({ user: initialUser, 
                    </button>
                 )}
 
-                {/* صلاحية الطرد والحظر من الغرفة (للمالك والمشرف) */}
                 {canManage && (
                    <button 
                      onClick={() => { if(confirm('هل أنت متأكد من طرد وحظر العضو من الغرفة؟')) { onAction('kickAndBan'); setShowAdminMenu(false); } }} 

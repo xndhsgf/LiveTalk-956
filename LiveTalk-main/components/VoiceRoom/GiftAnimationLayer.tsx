@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../../services/firebase';
@@ -24,7 +25,7 @@ interface GiftAnimationLayerProps {
   roomId: string;
   currentUserId: string;
   speakers?: any[];
-  onActiveChange?: (active: boolean) => void; // مضاف
+  onActiveChange?: (active: boolean) => void;
 }
 
 const SmartVideoPlayer = ({ src, objectFit }: { src: string, objectFit: string }) => {
@@ -67,7 +68,7 @@ const SmartVideoPlayer = ({ src, objectFit }: { src: string, objectFit: string }
   }, [src]);
 
   return (
-    <div className="w-full h-full relative flex items-center justify-center bg-transparent overflow-hidden">
+    <div className="w-full h-full relative flex items-center justify-center bg-transparent overflow-hidden pointer-events-none">
       <video 
         ref={videoRef}
         key={src}
@@ -78,7 +79,7 @@ const SmartVideoPlayer = ({ src, objectFit }: { src: string, objectFit: string }
         preload="auto"
         disablePictureInPicture
         disableRemotePlayback
-        className={`w-full h-full ${objectFit}`}
+        className={`w-full h-full ${objectFit} pointer-events-none`}
         style={{ 
           pointerEvents: 'none',
           backgroundColor: 'transparent'
@@ -93,7 +94,6 @@ export const GiftAnimationLayer = forwardRef((props: GiftAnimationLayerProps, re
   const [activeAnimations, setActiveAnimations] = useState<GiftEvent[]>([]);
   const playedIds = useRef(new Set<string>());
 
-  // مراقبة النشاط لإبلاغ الغرفة
   useEffect(() => {
     if (onActiveChange) {
       onActiveChange(activeAnimations.length > 0);
@@ -177,12 +177,12 @@ export const GiftAnimationLayer = forwardRef((props: GiftAnimationLayerProps, re
       return (
         <img 
           src={icon} 
-          className={`w-full h-full ${objectFit}`} 
+          className={`w-full h-full ${objectFit} pointer-events-none`} 
           alt="" 
         />
       );
     }
-    return <span className={`${isFull ? 'text-[200px]' : 'text-8xl'} drop-shadow-2xl`}>{icon}</span>;
+    return <span className={`${isFull ? 'text-[200px]' : 'text-8xl'} drop-shadow-2xl pointer-events-none`}>{icon}</span>;
   };
 
   return (
@@ -205,10 +205,10 @@ export const GiftAnimationLayer = forwardRef((props: GiftAnimationLayerProps, re
                 duration: showFullScreen ? 0 : 0.5,
                 ease: "linear"
               }}
-              className={`absolute inset-0 flex flex-col items-center justify-center ${showFullScreen ? 'z-[1000]' : 'z-[800]'}`}
+              className={`absolute inset-0 flex flex-col items-center justify-center pointer-events-none ${showFullScreen ? 'z-[1000]' : 'z-[800]'}`}
             >
-              <div className={`relative ${sizeClass} flex items-center justify-center overflow-hidden`}>
-                 <div className="relative z-10 w-full h-full flex items-center justify-center">
+              <div className={`relative ${sizeClass} flex items-center justify-center overflow-hidden pointer-events-none`}>
+                 <div className="relative z-10 w-full h-full flex items-center justify-center pointer-events-none">
                     {renderGiftContent(event.giftIcon, displaySize)}
                  </div>
                  
@@ -216,7 +216,7 @@ export const GiftAnimationLayer = forwardRef((props: GiftAnimationLayerProps, re
                     <motion.div 
                       initial={{ scale: 0 }}
                       animate={{ scale: 1.2 }}
-                      className="absolute -right-6 top-0 bg-gradient-to-b from-yellow-300 to-orange-600 text-white font-black text-5xl px-4 py-1 rounded-2xl shadow-[0_0_30px_rgba(0,0,0,0.6)] border-2 border-white italic z-20"
+                      className="absolute -right-6 top-0 bg-gradient-to-b from-yellow-300 to-orange-600 text-white font-black text-5xl px-4 py-1 rounded-2xl shadow-[0_0_30px_rgba(0,0,0,0.6)] border-2 border-white italic z-20 pointer-events-none"
                     >
                        X{event.quantity}
                     </motion.div>
