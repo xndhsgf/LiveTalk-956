@@ -122,7 +122,7 @@ export default function App() {
 
   const pendingUserUpdates = useRef<Partial<User>>({});
   const lastAnnouncementId = useRef<string | null>(null);
-  const [appLogo, setAppLogo] = useState(() => localStorage.getItem('vivo_live_fixed_logo') || PERMANENT_LOGO_URL);
+  const [appLogo, setAppLogo] = useState(() => localStorage.getItem('voice_chat_user_fixed_logo') || PERMANENT_LOGO_URL);
 
   const t = translations[language];
 
@@ -423,7 +423,7 @@ export default function App() {
       <AnimatePresence>
         {currentRoom && (
           <motion.div key="voice-room-wrapper" initial={{ y: "100%" }} animate={{ y: isRoomMinimized ? "100%" : "0%", opacity: isRoomMinimized ? 0 : 1 }} exit={{ y: "100%" }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-0 z-[150] overflow-hidden" style={{ pointerEvents: isRoomMinimized ? 'none' : 'auto' }}>
-            <VoiceRoom room={currentRoom} currentUser={user!} onUpdateUser={handleUpdateUser} onLeave={handleRoomLeave} onMinimize={() => setIsRoomMinimized(true)} isMinimized={isRoomMinimized} gifts={gifts} onEditProfile={() => setShowEditProfileModal(true)} gameSettings={gameSettings} onUpdateRoom={handleUpdateRoom} isMuted={isUserMuted} onToggleMute={() => setIsUserMuted(!isUserMuted)} users={users} onOpenPrivateChat={setPrivateChatPartner} giftCategoryLabels={giftCategoryLabels} />
+            <VoiceRoom room={currentRoom} currentUser={user!} onUpdateUser={handleUpdateUser} onLeave={handleRoomLeave} onMinimize={() => setIsRoomMinimized(true)} isMinimized={isRoomMinimized} gifts={gifts} onEditProfile={() => setShowEditProfileModal(true)} gameSettings={gameSettings} onUpdateRoom={handleUpdateRoom} isMuted={isUserMuted} onToggleMute={() => setIsUserMuted(!isUserMuted)} users={users} onOpenPrivateChat={setPrivateChatPartner} onOpenCP={() => setShowCPModal(true)} giftCategoryLabels={giftCategoryLabels} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -450,7 +450,7 @@ export default function App() {
       {activeGame === 'wheel' && <WheelGameModal isOpen={activeGame === 'wheel'} onClose={() => setActiveGame(null)} userCoins={Number(user.coins)} onUpdateCoins={(c) => handleUpdateUser({ coins: c })} winRate={gameSettings.wheelWinRate} gameSettings={gameSettings} />}
       {activeGame === 'slots' && <SlotsGameModal isOpen={activeGame === 'slots'} onClose={() => setActiveGame(null)} userCoins={Number(user.coins)} onUpdateCoins={(c) => handleUpdateUser({ coins: c })} winRate={gameSettings.slotsWinRate} gameSettings={gameSettings} />}
       {activeGame === 'lion' && <LionWheelGameModal isOpen={activeGame === 'lion'} onClose={() => setActiveGame(null)} userCoins={Number(user.coins)} onUpdateCoins={(c) => handleUpdateUser({ coins: c })} gameSettings={gameSettings} />}
-      <AnimatePresence>{showProfileSheet && selectedUserForProfile && (<UserProfileSheet user={selectedUserForProfile} onClose={() => setShowProfileSheet(false)} isCurrentUser={selectedUserForProfile.id === user.id} onAction={(action) => { if (action === 'message') setPrivateChatPartner(selectedUserForProfile); if (action === 'cp') setShowCPModal(true); }} currentUser={user} allUsers={users} currentRoom={currentRoom || { id: 'lobby', title: 'لوبي', category: 'تعارف', hostId: '', speakers: [], thumbnail: '', listeners: 0, background: '' }} />)}</AnimatePresence>
+      <AnimatePresence>{showProfileSheet && selectedUserForProfile && (<UserProfileSheet user={selectedUserForProfile} onClose={() => setShowProfileSheet(false)} isCurrentUser={selectedUserForProfile.id === user.id} onAction={(action) => { if (action === 'message') setPrivateChatPartner(selectedUserForProfile); if (action === 'cp') setShowCPModal(true); if (action === 'gift') setShowBagModal(true); }} currentUser={user} allUsers={users} currentRoom={currentRoom || { id: 'lobby', title: 'لوبي', category: 'تعارف', hostId: '', speakers: [], thumbnail: '', listeners: 0, background: '' }} />)}</AnimatePresence>
       <AnimatePresence>{privateChatPartner && (<PrivateChatModal partner={privateChatPartner} currentUser={user} onClose={() => setPrivateChatPartner(null)} />)}</AnimatePresence>
     </div>
   );

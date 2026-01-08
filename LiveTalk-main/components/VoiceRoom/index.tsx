@@ -67,7 +67,7 @@ const ChatLevelBadge: React.FC<{ level: number; type: 'wealth' | 'recharge' }> =
 const VoiceRoom: React.FC<any> = ({ 
   room: initialRoom, onLeave, onMinimize, currentUser, gifts, gameSettings, onUpdateRoom, 
   isMuted, onToggleMute, onUpdateUser, users, onEditProfile, onAnnouncement, onOpenPrivateChat,
-  giftCategoryLabels, isMinimized
+  onOpenCP, giftCategoryLabels, isMinimized
 }) => {
   const [room, setRoom] = useState<Room>(initialRoom);
   const [showGifts, setShowGifts] = useState(false);
@@ -407,7 +407,7 @@ const VoiceRoom: React.FC<any> = ({
     }
     const wealthLvl = calculateLiveLvl(Number(currentUser.wealth || 0) + cost);
     batch.set(doc(collection(db, 'rooms', initialRoom.id, 'messages')), { userId: currentUser.id, userName: currentUser.name, userWealthLevel: wealthLvl, userRechargeLevel: calculateLiveLvl(Number(currentUser.rechargePoints || 0)), content: win > 0 ? `أرسل ${gift.name} x${qty} وفاز بـ ${win.toLocaleString()} 🪙!` : `أرسل ${gift.name} x${qty} 🎁`, type: 'gift', isLuckyWin: win > 0, timestamp: serverTimestamp() });
-    batch.commit(); batch.commit(); queueRoomSpeakersUpdate(speakers);
+    batch.commit(); queueRoomSpeakersUpdate(speakers);
   };
 
   const handleSendMessage = (text: string) => {
@@ -608,7 +608,7 @@ const VoiceRoom: React.FC<any> = ({
       {activeGame === 'slots' && <SlotsGameModal isOpen={activeGame === 'slots'} onClose={() => setActiveGame(null)} userCoins={Number(currentUser.coins)} onUpdateCoins={(c) => onUpdateUser({ coins: c })} winRate={gameSettings.slotsWinRate} gameSettings={gameSettings} />}
       {activeGame === 'lion' && <LionWheelGameModal isOpen={activeGame === 'lion'} onClose={() => setActiveGame(null)} userCoins={Number(currentUser.coins)} onUpdateCoins={(c) => onUpdateUser({ coins: c })} gameSettings={gameSettings} />}
 
-      <AnimatePresence>{showProfileSheet && selectedUserForProfile && (<UserProfileSheet user={selectedUserForProfile} onClose={() => setShowProfileSheet(false)} isCurrentUser={selectedUserForProfile.id === currentUser.id} onAction={(action) => { if (action === 'gift') setShowGifts(true); if (action === 'message') onOpenPrivateChat(selectedUserForProfile); if (action === 'edit') setShowEditProfileModal(true); handleAdminActionFromProfile(action, selectedUserForProfile); }} currentUser={currentUser} allUsers={users} currentRoom={room} />)}</AnimatePresence>
+      <AnimatePresence>{showProfileSheet && selectedUserForProfile && (<UserProfileSheet user={selectedUserForProfile} onClose={() => setShowProfileSheet(false)} isCurrentUser={selectedUserForProfile.id === currentUser.id} onAction={(action) => { if (action === 'gift') { setSelectedRecipientIds([selectedUserForProfile.id]); setShowGifts(true); setShowProfileSheet(false); } if (action === 'message') onOpenPrivateChat(selectedUserForProfile); if (action === 'edit') setShowEditProfileModal(true); if (action === 'cp') onOpenCP(); handleAdminActionFromProfile(action, selectedUserForProfile); }} currentUser={currentUser} allUsers={users} currentRoom={room} />)}</AnimatePresence>
       <AnimatePresence>{showEditProfileModal && <EditProfileModal isOpen={showEditProfileModal} onClose={() => setShowEditProfileModal(false)} currentUser={currentUser} onSave={onUpdateUser} />}</AnimatePresence>
       <AnimatePresence>{showParticipants && ( <RoomParticipantsModal isOpen={showParticipants} onClose={() => setShowParticipants(false)} participants={roomParticipants} onSelectUser={(u) => { setSelectedUserForProfile(u); setShowProfileSheet(true); }} /> )}</AnimatePresence>
     </div>
